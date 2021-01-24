@@ -8,8 +8,8 @@
     [clojure-lsp.producer :as producer]
     [clojure-lsp.shared :as shared]
     [clojure.core.async :as async]
-    [clojure.tools.logging :as log]
-    [nrepl.server :as nrepl.server]
+    ;; [nrepl.server :as nrepl.server]
+    [taoensso.timbre :as log]
     [trptcolin.versioneer.core :as version])
   (:import
     (clojure_lsp ClojureExtensions)
@@ -67,6 +67,11 @@
     (org.eclipse.lsp4j.launch LSPLauncher)
     (org.eclipse.lsp4j.services LanguageServer TextDocumentService WorkspaceService LanguageClient))
   (:gen-class))
+
+(log/merge-config! {:appenders {:println {:enabled? false}
+                                :spit (log/spit-appender {:fname "/tmp/clojure-lsp.out"})}})
+
+(log/handle-uncaught-jvm-exceptions!)
 
 (defonce formatting (atom false))
 
@@ -395,27 +400,29 @@
     (slurp  ".nrepl-port")
     (catch Exception _)))
 
-(defn- embedded-nrepl-server
-  []
-  (let [repl-server (nrepl.server/start-server)
-        port (:port repl-server)]
-    port))
+;; (defn- embedded-nrepl-server
+;;   []
+;;   (let [repl-server (nrepl.server/start-server)
+;;         port (:port repl-server)]
+;;     port))
 
-(defn- repl-port
-  []
-  (or (dot-nrepl-port-file)
-      (embedded-nrepl-server)))
+;; (defn- repl-port
+;;   []
+;;   (or (dot-nrepl-port-file)
+;;       (embedded-nrepl-server)))
 
 (defn- run []
   (log/info "Starting server...")
   (let [is (or System/in (tee-system-in System/in))
         os (or System/out (tee-system-out System/out))
         launcher (LSPLauncher/createServerLauncher server is os)
-        port (repl-port)]
-    (log/info "====== LSP nrepl server started on port" port)
+        ;port (repl-port)
+        ]
+    ;; (log/info "====== LSP nrepl server started on port" port)
     (swap! db/db assoc
            :client ^LanguageClient (.getRemoteProxy launcher)
-           :port port)
+           ;:port port
+           )
     (async/go
       (loop [edit (async/<! db/edits-chan)]
         (producer/workspace-apply-edit edit)
