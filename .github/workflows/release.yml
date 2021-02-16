@@ -44,111 +44,6 @@ jobs:
           path: target/clojure-lsp
           name: clojure-lsp
 
-  native-linux:
-    name: Build native linux binary
-    needs: build-jvm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
-        with:
-          name: clojure-lsp.jar
-
-      - name: Install Leiningen
-        uses: DeLaGuardo/setup-clojure@master
-        with:
-          lein: 2.9.1
-
-      - name: Install Babashka
-        run: curl -s https://raw.githubusercontent.com/borkdude/babashka/master/install | sudo bash
-
-      - name: Install GraalVM
-        uses: DeLaGuardo/setup-graalvm@master
-        with:
-          graalvm-version: 21.0.0.java11
-
-      - name: Install native-image component
-        run: |
-          gu install native-image
-
-      - name: Build Linux native image
-        env:
-          CLOJURE_LSP_JAR: clojure-lsp.jar
-          CLOJURE_LSP_XMX: "-J-Xmx6g"
-        run: |
-          graalvm/native-unix-compile.sh
-
-      - name: Compress binary
-        uses: svenstaro/upx-action@v2
-        with:
-          file: clojure-lsp
-
-      - name: Run integration tests
-        run: |
-          bb integration-test/run-all.clj ./clojure-lsp
-
-      - name: Zip binary
-        run: zip clojure-lsp-native-linux-amd64.zip clojure-lsp
-
-      - name: Upload
-        uses: actions/upload-artifact@v2
-        with:
-          path: clojure-lsp-native-linux-amd64.zip
-          name: clojure-lsp-native-linux-amd64.zip
-
-  native-static-linux:
-    name: Build native static linux binary
-    needs: build-jvm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
-        with:
-          name: clojure-lsp.jar
-
-      - name: Install Leiningen
-        uses: DeLaGuardo/setup-clojure@master
-        with:
-          lein: 2.9.1
-
-      - name: Install Babashka
-        run: curl -s https://raw.githubusercontent.com/borkdude/babashka/master/install | sudo bash
-
-      - name: Install GraalVM
-        uses: DeLaGuardo/setup-graalvm@master
-        with:
-          graalvm-version: 21.0.0.java11
-
-      - name: Install native-image component
-        run: |
-          gu install native-image
-
-      - name: Build static Linux native image
-        env:
-          CLOJURE_LSP_JAR: clojure-lsp.jar
-          CLOJURE_LSP_XMX: "-J-Xmx6g"
-          CLOJURE_LSP_STATIC: true
-        run: |
-          graalvm/native-unix-compile.sh
-
-      - name: Compress binary
-        uses: svenstaro/upx-action@v2
-        with:
-          file: clojure-lsp
-
-      - name: Run integration tests
-        continue-on-error: true # Not working, check #296
-        run: |
-          bb integration-test/run-all.clj ./clojure-lsp
-
-      - name: Zip binary
-        run: zip clojure-lsp-native-static-linux-amd64.zip clojure-lsp
-
-      - name: Upload
-        uses: actions/upload-artifact@v2
-        with:
-          path: clojure-lsp-native-static-linux-amd64.zip
-          name: clojure-lsp-native-static-linux-amd64.zip
 
   native-macos:
     name: Build native MacOS binary
@@ -267,7 +162,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: [build-jvm, native-linux, native-macos, native-windows]
+    needs: [build-jvm, native-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -296,14 +191,6 @@ jobs:
 
       - uses: actions/download-artifact@v2
 
-      - name: Upload JVM
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: clojure-lsp.jar/clojure-lsp.jar
-          asset_name: clojure-lsp.jar
-          tag: ${{ steps.latest-tag.outputs.tag}}
-
       - name: Upload JVM unix embbeded jar
         uses: svenstaro/upload-release-action@v2
         with:
@@ -312,42 +199,10 @@ jobs:
           asset_name: clojure-lsp
           tag: ${{ steps.latest-tag.outputs.tag}}
 
-      - name: Upload JVM Windows embedded jar
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: clojure-lsp/clojure-lsp
-          asset_name: clojure-lsp.bat
-          tag: ${{ steps.latest-tag.outputs.tag}}
-
-      - name: Upload Linux native binary
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: clojure-lsp-native-linux-amd64.zip/clojure-lsp-native-linux-amd64.zip
-          asset_name: clojure-lsp-native-linux-amd64.zip
-          tag: ${{ steps.latest-tag.outputs.tag }}
-
-      - name: Upload static Linux native binary
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: clojure-lsp-native-static-linux-amd64.zip/clojure-lsp-native-static-linux-amd64.zip
-          asset_name: clojure-lsp-native-static-linux-amd64.zip
-          tag: ${{ steps.latest-tag.outputs.tag }}
-
       - name: Upload MacOS native binary
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: clojure-lsp-native-macos-amd64.zip/clojure-lsp-native-macos-amd64.zip
           asset_name: clojure-lsp-native-macos-amd64.zip
-          tag: ${{ steps.latest-tag.outputs.tag}}
-
-      - name: Upload Windows native binary
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: clojure-lsp-native-windows-amd64.zip/clojure-lsp-native-windows-amd64.zip
-          asset_name: clojure-lsp-native-windows-amd64.zip
           tag: ${{ steps.latest-tag.outputs.tag}}

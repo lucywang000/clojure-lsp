@@ -400,9 +400,9 @@
     (.startListening launcher)))
 
 (defn ^:private setup-logging []
-  (let [log-file (str (java.io.File/createTempFile "clojure-lsp." ".out"))]
-    (log/merge-config! {:appenders {:println {:enabled? false}
-                                    :spit (log/spit-appender {:fname log-file})}}))
+  (log/merge-config!
+   {:appenders {:println {:enabled? false}
+                :spit (log/spit-appender {:fname "/tmp/clojure-lsp.out"})}})
   (log/handle-uncaught-jvm-exceptions!))
 
 (defn -main [& args]
